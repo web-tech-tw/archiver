@@ -1,5 +1,4 @@
 export const PlatformName = {
-    Global: "Global",
     Discord: "Discord",
 } as const;
 
@@ -7,10 +6,6 @@ export type PlatformName = (typeof PlatformName)[keyof typeof PlatformName];
 
 export type MessageCallback = (ctx: ChatContext) => Promise<void>;
 export type CommandCallback = (command: string, args: string[], ctx: ChatContext) => Promise<void>;
-
-export interface BaseGlobalProvider extends BaseProvider {
-    sendText(roomId: string, content: string, platformName?: PlatformName): void | Promise<void>;
-}
 
 export interface BasePlatformProvider extends BaseProvider {
     sendText(roomId: string, content: string): void | Promise<void>;

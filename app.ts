@@ -1,22 +1,17 @@
 import { connectDatabase, disconnectDatabase } from "./src/databases/connection";
 import { getMessageModel } from "./src/databases/models/message";
 import { parseChatStream } from "./src/utils/parser";
-import { getCollectionForRoom } from "./src/utils/mapping";
-import { GlobalProvider } from "./src/providers/global";
+import { getCollectionForRoom, loadMappingConfig } from "./src/config/mapping";
 import { DiscordProvider } from "./src/providers/discord";
-import { server } from "./src/routes";
 import type { ChatContext } from "./src/types/provider";
 
 await connectDatabase();
+await loadMappingConfig();
 
-const providers = [
-    new DiscordProvider({
-        token: Bun.env.DISCORD_BOT_TOKEN || "",
-        presence: Bun.env.DISCORD_PRESENCE || "",
-    }),
-];
-
-const provider = new GlobalProvider(providers);
+const provider = new DiscordProvider({
+    token: Bun.env.DISCORD_BOT_TOKEN || "",
+    presence: Bun.env.DISCORD_PRESENCE || "萬眾一心",
+});
 
 provider.onMessage(async (ctx: ChatContext) => {
     // 1. 若收到的是聊天紀錄文字檔案（.txt）
@@ -93,10 +88,7 @@ provider.onCommand(async (command, _args, ctx) => {
 });
 
 await provider.start();
-
-const port = Number(Bun.env.HTTP_PORT || 3000);
-server.listen(port);
-console.info(`[Archiver] HTTP Server listening on port ${port}`);
+console.info("[Archiver] Discord Bot started successfully.");
 
 const shutdown = async () => {
     console.info("[Archiver] Shutting down...");
