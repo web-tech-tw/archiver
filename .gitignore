@@ -1,24 +1,35 @@
-# Nuxt dev/build outputs
-.output
-.data
-.nuxt
-.nitro
-.cache
-dist
-
-# Node dependencies
-node_modules
-
-# Logs
-logs
-*.log
-
-# Misc
+# Finder config file
 .DS_Store
-.fleet
-.idea
 
-# Local env files
+# Directories
+.nyc_output
+coverage
+node_modules
+dist
+received
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Lock file
+package-lock.json
+
+# Environment variables & secrets
 .env
-.env.*
-!.env.example
+.env.local
+.env.*.local
+!.env.sample
+mapping.toml
+!mapping.sample.toml

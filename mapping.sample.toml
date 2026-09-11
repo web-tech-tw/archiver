@@ -1,0 +1,7 @@
+# mapping.toml
+# 頻道 ID 與 MongoDB Collection 名稱對應設定
+
+[mappings]
+# 範例：Discord 頻道 ID 對應至指定的 Collection
+"123456789012345678" = "discord_chat_archive"
+"987654321098765432" = "another_chat_archive"
