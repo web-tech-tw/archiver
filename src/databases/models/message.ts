@@ -1,8 +1,14 @@
 import mongoose, { Schema } from "mongoose";
 import type { Message } from "../../utils/parser";
 
+export interface MessageVia {
+    channelId: string;
+    uploaderId: string;
+}
+
 export interface MessageDocument extends Omit<Message, "hash"> {
     _id: string;
+    via?: MessageVia;
 }
 
 export const messageSchema = new Schema<MessageDocument>(
@@ -11,6 +17,10 @@ export const messageSchema = new Schema<MessageDocument>(
         date: { type: String, required: true },
         time: { type: String, required: true },
         content: { type: String, required: true },
+        via: {
+            channelId: { type: String, required: true },
+            uploaderId: { type: String, required: true },
+        },
     },
     {
         timestamps: true,

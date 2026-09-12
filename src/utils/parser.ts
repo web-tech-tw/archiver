@@ -7,7 +7,7 @@ export interface Message {
     hash: string;
 }
 
-const DATE_REGEX = /^(\d{4}[/.-]\d{1,2}[/.-]\d{1,2})(?:\s+(.+))?$/;
+const DATE_REGEX = /^(\d{4}[/.-]\d{1,2}[/.-]\d{1,2})(?:\s*[([（]?[^0-9\n:]{1,10}[)）\]]?)?$/;
 const TIME_REGEX = /^(\d{1,2}:\d{2})\s+(.*)$/;
 
 function generateHash(date: string, time: string, content: string): string {

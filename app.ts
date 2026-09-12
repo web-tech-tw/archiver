@@ -78,11 +78,17 @@ provider.onMessage(async (ctx: ChatContext) => {
             updateOne: {
                 filter: { _id: string };
                 update: {
-                    $setOnInsert: {
-                        _id: string;
+                    $set: {
                         date: string;
                         time: string;
                         content: string;
+                        via: {
+                            channelId: string;
+                            uploaderId: string;
+                        };
+                    };
+                    $setOnInsert: {
+                        _id: string;
                     };
                 };
                 upsert: true;
@@ -96,11 +102,17 @@ provider.onMessage(async (ctx: ChatContext) => {
                     updateOne: {
                         filter: { _id: msg.hash },
                         update: {
-                            $setOnInsert: {
-                                _id: msg.hash,
+                            $set: {
                                 date: msg.date,
                                 time: msg.time,
                                 content: msg.content,
+                                via: {
+                                    channelId: ctx.roomId,
+                                    uploaderId: ctx.sender.id,
+                                },
+                            },
+                            $setOnInsert: {
+                                _id: msg.hash,
                             },
                         },
                         upsert: true,

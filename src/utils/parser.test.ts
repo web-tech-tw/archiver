@@ -64,4 +64,28 @@ describe("LINE Chat Parser", () => {
 
         await unlink(tempPath);
     });
+
+    it("should parse dates formatted with fullwidth parentheses without spaces", async () => {
+        const tempPath = join(import.meta.dir, "temp_test_date_format.txt");
+        const sampleChat = `[LINE] Test Chat
+儲存日期：2026/9/12 01:14
+
+2026/6/26（週五）
+23:31\t小菜\t測試訊息
+`;
+        await Bun.write(tempPath, sampleChat);
+
+        const messages = await parseChat(tempPath);
+        expect(messages.length).toBe(1);
+        const firstMsg = messages[0];
+        expect(firstMsg).toBeDefined();
+        if (!firstMsg) {
+            throw new Error("Expected 1 message");
+        }
+        expect(firstMsg.date).toBe("2026/6/26（週五）");
+        expect(firstMsg.time).toBe("23:31");
+        expect(firstMsg.content).toBe("小菜\t測試訊息");
+
+        await unlink(tempPath);
+    });
 });
