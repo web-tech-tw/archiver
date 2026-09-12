@@ -4,6 +4,25 @@ export const PlatformName = {
 
 export type PlatformName = (typeof PlatformName)[keyof typeof PlatformName];
 
+export interface MessageCardField {
+    name: string;
+    value: string;
+    inline?: boolean;
+}
+
+export interface MessageCard {
+    title?: string;
+    description?: string;
+    color?: number;
+    fields?: MessageCardField[];
+    footer?: string;
+    timestamp?: Date;
+}
+
+export interface SentMessageHandle {
+    edit(content: string | MessageCard): Promise<void>;
+}
+
 export type MessageCallback = (ctx: ChatContext) => Promise<void>;
 export type CommandCallback = (command: string, args: string[], ctx: ChatContext) => Promise<void>;
 
@@ -35,5 +54,6 @@ export interface ChatContext {
     type: MessageContentType;
     content: string;
     fileName?: string;
-    reply(content: string): Promise<void>;
+    reply(content: string | MessageCard): Promise<SentMessageHandle>;
+    deleteUserMessage?(): Promise<void>;
 }

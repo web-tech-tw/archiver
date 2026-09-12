@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { parseChatStream, parseChat } from "./parser";
+import { parseChatStream, parseChat, extractChatPreview } from "./parser";
 import { join } from "node:path";
 import { unlink } from "node:fs/promises";
 
@@ -40,6 +40,27 @@ describe("LINE Chat Parser", () => {
 
         expect(msg2.time).toBe("11:49");
         expect(msg2.content).toBe("Alice 收到");
+
+        await unlink(tempPath);
+    });
+
+    it("should extract header and first message preview", async () => {
+        const tempPath = join(import.meta.dir, "temp_test_preview.txt");
+        const sampleChat = `[LINE] Vue.js Plus 社群的聊天記錄
+儲存日期：2026/9/12 01:14
+
+2026/6/26（週五）
+23:31\t小菜\t摁⋯看客戶需求吧
+有些很注重效能的產品...
+23:32\t小明\t同意
+`;
+        await Bun.write(tempPath, sampleChat);
+
+        const preview = await extractChatPreview(tempPath);
+        expect(preview).toContain("[LINE] Vue.js Plus 社群的聊天記錄");
+        expect(preview).toContain("儲存日期：2026/9/12 01:14");
+        expect(preview).toContain("23:31\t小菜\t摁⋯看客戶需求吧\n有些很注重效能的產品...");
+        expect(preview).not.toContain("23:32\t小明\t同意");
 
         await unlink(tempPath);
     });

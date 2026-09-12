@@ -81,3 +81,27 @@ export async function parseChat(filePath: string): Promise<Message[]> {
     }
     return messages;
 }
+
+/**
+ * 擷取聊天紀錄檔案開頭的預覽文字（包含標頭資訊與首則訊息）
+ */
+export async function extractChatPreview(filePath: string, maxLines = 10): Promise<string> {
+    const lines: string[] = [];
+    let messageCount = 0;
+
+    for await (const line of readLines(filePath)) {
+        if (TIME_REGEX.test(line)) {
+            messageCount++;
+            if (messageCount > 1) {
+                break;
+            }
+        }
+
+        lines.push(line);
+        if (lines.length >= maxLines) {
+            break;
+        }
+    }
+
+    return lines.join("\n").trim();
+}

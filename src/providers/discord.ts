@@ -4,14 +4,17 @@ import {
     Partials,
     Events,
     PresenceUpdateStatus,
-    ActivityType
+    ActivityType,
+    EmbedBuilder,
 } from "discord.js";
 import { PlatformName } from "../types/provider";
 import type {
     BasePlatformProvider,
     MessageCallback,
     CommandCallback,
-    ChatContext
+    ChatContext,
+    MessageCard,
+    SentMessageHandle
 } from "../types/provider";
 import type { DiscordProviderParams } from "../types/discord";
 
@@ -20,6 +23,17 @@ import { saveReceivedImage, RECEIVED_DIR } from "../utils/media";
 import { nanoid } from "nanoid";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+
+function toDiscordEmbed(card: MessageCard): EmbedBuilder {
+    const embed = new EmbedBuilder();
+    if (card.title) embed.setTitle(card.title);
+    if (card.description) embed.setDescription(card.description);
+    if (card.color !== undefined) embed.setColor(card.color);
+    if (card.fields && card.fields.length > 0) embed.addFields(card.fields);
+    if (card.footer) embed.setFooter({ text: card.footer });
+    if (card.timestamp) embed.setTimestamp(card.timestamp);
+    return embed;
+}
 
 export class DiscordProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.Discord;
@@ -78,6 +92,32 @@ export class DiscordProvider implements BasePlatformProvider {
 
             if (!cleanContent && imageAttachments.size === 0 && fileAttachments.size === 0) return;
 
+            const channel = message.channel;
+            const channelId = channel.id;
+
+            const createReply = () => {
+                return async (content: string | MessageCard): Promise<SentMessageHandle> => {
+                    if (!channel.isSendable()) {
+                        throw new Error(`[DiscordProvider] Channel ${channelId} is not sendable`);
+                    }
+                    const payload = typeof content === "string" ? { content } : { embeds: [toDiscordEmbed(content)] };
+                    const sent = await channel.send(payload);
+                    return {
+                        edit: async (newContent: string | MessageCard) => {
+                            const editPayload = typeof newContent === "string"
+                                ? { content: newContent, embeds: [] }
+                                : { content: null, embeds: [toDiscordEmbed(newContent)] };
+                            await sent.edit(editPayload);
+                        },
+                    };
+                };
+            };
+
+            const deleteUserMessage = async () => {
+                if (!message.deletable) return;
+                await message.delete();
+            };
+
             // 處理檔案附件（例如 LINE 聊天紀錄 .txt）
             for (const [, attachment] of fileAttachments) {
                 try {
@@ -92,7 +132,7 @@ export class DiscordProvider implements BasePlatformProvider {
 
                         const fileCtx: ChatContext = {
                             platformName: PlatformName.Discord,
-                            roomId: message.channel.id,
+                            roomId: channelId,
                             sender: {
                                 id: message.author.id,
                                 nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
@@ -101,9 +141,8 @@ export class DiscordProvider implements BasePlatformProvider {
                             type: "file",
                             content: targetPath,
                             fileName: originalName,
-                            reply: async (text: string) => {
-                                await this.sendText(message.channel.id, text);
-                            },
+                            reply: createReply(),
+                            deleteUserMessage,
                         };
 
                         for (const cb of this.#messageCallbacks) {
@@ -128,7 +167,7 @@ export class DiscordProvider implements BasePlatformProvider {
                         const id = await saveReceivedImage(buffer);
                         const imageCtx: ChatContext = {
                             platformName: PlatformName.Discord,
-                            roomId: message.channel.id,
+                            roomId: channelId,
                             sender: {
                                 id: message.author.id,
                                 nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
@@ -137,9 +176,8 @@ export class DiscordProvider implements BasePlatformProvider {
                             type: "image",
                             content: id,
                             fileName: attachment.name || undefined,
-                            reply: async (text: string) => {
-                                await this.sendText(message.channel.id, text);
-                            },
+                            reply: createReply(),
+                            deleteUserMessage,
                         };
 
                         for (const cb of this.#messageCallbacks) {
@@ -159,7 +197,7 @@ export class DiscordProvider implements BasePlatformProvider {
             if (cleanContent) {
                 const ctx: ChatContext = {
                     platformName: PlatformName.Discord,
-                    roomId: message.channel.id,
+                    roomId: channelId,
                     sender: {
                         id: message.author.id,
                         nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
@@ -167,9 +205,8 @@ export class DiscordProvider implements BasePlatformProvider {
                     },
                     type: "text",
                     content: cleanContent,
-                    reply: async (text: string) => {
-                        await this.sendText(message.channel.id, text);
-                    },
+                    reply: createReply(),
+                    deleteUserMessage,
                 };
 
                 for (const cb of this.#messageCallbacks) {
