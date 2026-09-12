@@ -1,6 +1,7 @@
 import { connectDatabase, disconnectDatabase } from "./src/databases/connection";
 import { getMessageModel } from "./src/databases/models/message";
-import { parseChatStream, extractChatPreview } from "./src/utils/parser";
+import { dryRunValidateStream, archiveChatStream } from "./src/databases/archiver";
+import { extractChatPreview } from "./src/utils/parser";
 import { getCollectionForRoom, loadMappingConfig } from "./src/config/mapping";
 import { DiscordProvider } from "./src/providers/discord";
 import type { ChatContext, MessageCard } from "./src/types/provider";
@@ -73,61 +74,17 @@ provider.onMessage(async (ctx: ChatContext) => {
         }));
 
         const Model = getMessageModel(collectionName);
-        let count = 0;
-        let batch: Array<{
-            updateOne: {
-                filter: { _id: string };
-                update: {
-                    $set: {
-                        date: string;
-                        time: string;
-                        content: string;
-                        via: {
-                            channelId: string;
-                            uploaderId: string;
-                        };
-                    };
-                    $setOnInsert: {
-                        _id: string;
-                    };
-                };
-                upsert: true;
-            };
-        }> = [];
+        const via = {
+            channelId: ctx.roomId,
+            uploaderId: ctx.sender.id,
+        };
 
         try {
-            for await (const msg of parseChatStream(ctx.content)) {
-                count++;
-                batch.push({
-                    updateOne: {
-                        filter: { _id: msg.hash },
-                        update: {
-                            $set: {
-                                date: msg.date,
-                                time: msg.time,
-                                content: msg.content,
-                                via: {
-                                    channelId: ctx.roomId,
-                                    uploaderId: ctx.sender.id,
-                                },
-                            },
-                            $setOnInsert: {
-                                _id: msg.hash,
-                            },
-                        },
-                        upsert: true,
-                    },
-                });
+            // 1. Dry-run 掃描 Schema 驗證完整性 (Cursor 串流逐筆處理，避免記憶體溢出)
+            await dryRunValidateStream(ctx.content, Model, via);
 
-                if (batch.length >= 1000) {
-                    await Model.bulkWrite(batch);
-                    batch = [];
-                }
-            }
-
-            if (batch.length > 0) {
-                await Model.bulkWrite(batch);
-            }
+            // 2. 驗證通過後，以串流批次寫入資料庫 (每 1000 筆 bulkWrite，維持常數記憶體)
+            const count = await archiveChatStream(ctx.content, Model, via);
 
             await statusMsg.edit(buildStatusCard({
                 ...cardParams,
