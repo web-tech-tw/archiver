@@ -5,6 +5,7 @@ import { extractChatPreview } from "./src/utils/parser";
 import { getCollectionForRoom, loadMappingConfig } from "./src/config/mapping";
 import { DiscordProvider } from "./src/providers/discord";
 import type { ChatContext, MessageCard } from "./src/types/provider";
+import { nanoid } from "nanoid";
 
 await connectDatabase();
 await loadMappingConfig();
@@ -15,6 +16,7 @@ const provider = new DiscordProvider({
 });
 
 function buildStatusCard(params: {
+    transactionId: string;
     fileName: string;
     uploaderId?: string;
     uploaderName?: string;
@@ -43,10 +45,11 @@ function buildStatusCard(params: {
         color,
         fields: [
             { name: "目標集合", value: `\`${params.collectionName}\``, inline: true },
+            { name: "交易 ID", value: `\`${params.transactionId}\``, inline: true },
             { name: "處理狀態", value: statusText, inline: false },
         ],
         timestamp: new Date(),
-        footer: "Chat Archiver",
+        footer: `Chat Archiver • ${params.transactionId}`,
     };
 }
 
@@ -59,8 +62,10 @@ provider.onMessage(async (ctx: ChatContext) => {
             return;
         }
 
+        const transactionId = nanoid();
         const preview = await extractChatPreview(ctx.content);
         const cardParams = {
+            transactionId,
             fileName: ctx.fileName,
             uploaderId: ctx.sender.id,
             uploaderName: ctx.sender.nickname,
@@ -77,6 +82,7 @@ provider.onMessage(async (ctx: ChatContext) => {
         const via = {
             channelId: ctx.roomId,
             uploaderId: ctx.sender.id,
+            transactionId,
         };
 
         try {

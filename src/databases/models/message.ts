@@ -4,6 +4,7 @@ import type { Message } from "../../utils/parser";
 export interface MessageVia {
     channelId: string;
     uploaderId: string;
+    transactionId: string;
 }
 
 export interface MessageDocument extends Omit<Message, "hash"> {
@@ -41,6 +42,7 @@ export const messageSchema = new Schema<MessageDocument>(
         via: {
             channelId: { type: String, required: true },
             uploaderId: { type: String, required: true },
+            transactionId: { type: String, required: true },
         },
     },
     {

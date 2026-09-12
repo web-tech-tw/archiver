@@ -10,6 +10,7 @@ describe("Archiver Stream Processing", () => {
     const sampleVia = {
         channelId: "1234567890",
         uploaderId: "9876543210",
+        transactionId: "test_nanoid_123",
     };
 
     it("should pass dry-run validation for valid chat log", async () => {
@@ -77,6 +78,7 @@ describe("Archiver Stream Processing", () => {
             };
         }>;
         expect(firstCallArg[0]?.updateOne.update.$setOnInsert).toBeDefined();
+        expect(firstCallArg[0]?.updateOne.update.$setOnInsert?.via).toEqual(sampleVia);
         expect(firstCallArg[0]?.updateOne.update.$set).toBeUndefined();
 
         await unlink(tempPath);
