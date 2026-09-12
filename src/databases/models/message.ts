@@ -10,6 +10,8 @@ export interface MessageVia {
 export interface MessageDocument extends Omit<Message, "hash"> {
     _id: string;
     via?: MessageVia;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export const messageSchema = new Schema<MessageDocument>(
@@ -50,6 +52,8 @@ export const messageSchema = new Schema<MessageDocument>(
         _id: false,
     },
 );
+
+messageSchema.index({ date: 1, time: 1, createdAt: 1 });
 
 /**
  * 依據指定之 collectionName 取得對應之 Mongoose Model
