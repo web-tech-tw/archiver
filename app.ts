@@ -5,7 +5,6 @@ import { extractChatPreview } from "./src/utils/parser";
 import { getCollectionForRoom, loadMappingConfig } from "./src/config/mapping";
 import { DiscordProvider } from "./src/providers/discord";
 import type { ChatContext, MessageCard } from "./src/types/provider";
-import { nanoid } from "nanoid";
 
 await connectDatabase();
 await loadMappingConfig();
@@ -62,7 +61,10 @@ provider.onMessage(async (ctx: ChatContext) => {
             return;
         }
 
-        const transactionId = nanoid();
+        const transactionId = ctx.transactionId;
+        if (!transactionId) {
+            throw new Error("[Archiver] 訊息上下文缺少 transactionId");
+        }
         const preview = await extractChatPreview(ctx.content);
         const cardParams = {
             transactionId,

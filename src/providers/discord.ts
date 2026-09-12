@@ -141,6 +141,7 @@ export class DiscordProvider implements BasePlatformProvider {
                             type: "file",
                             content: targetPath,
                             fileName: originalName,
+                            transactionId: id,
                             reply: createReply(),
                             deleteUserMessage,
                         };
@@ -176,6 +177,7 @@ export class DiscordProvider implements BasePlatformProvider {
                             type: "image",
                             content: id,
                             fileName: attachment.name || undefined,
+                            transactionId: id,
                             reply: createReply(),
                             deleteUserMessage,
                         };

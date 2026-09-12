@@ -54,6 +54,7 @@ export interface ChatContext {
     type: MessageContentType;
     content: string;
     fileName?: string;
+    transactionId?: string;
     reply(content: string | MessageCard): Promise<SentMessageHandle>;
     deleteUserMessage?(): Promise<void>;
 }
