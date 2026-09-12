@@ -69,6 +69,16 @@ describe("Archiver Stream Processing", () => {
         expect(count).toBe(2);
         expect(bulkWriteMock).toHaveBeenCalledTimes(2);
 
+        const firstCallArg = (bulkWriteMock.mock.calls[0] as unknown[][])[0] as Array<{
+            updateOne: {
+                filter: { _id: string };
+                update: { $setOnInsert?: Record<string, unknown>; $set?: Record<string, unknown> };
+                upsert: boolean;
+            };
+        }>;
+        expect(firstCallArg[0]?.updateOne.update.$setOnInsert).toBeDefined();
+        expect(firstCallArg[0]?.updateOne.update.$set).toBeUndefined();
+
         await unlink(tempPath);
     });
 });

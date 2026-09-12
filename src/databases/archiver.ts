@@ -63,14 +63,12 @@ export async function archiveChatStream(
         updateOne: {
             filter: { _id: string };
             update: {
-                $set: {
+                $setOnInsert: {
+                    _id: string;
                     date: string;
                     time: string;
                     content: string;
                     via: MessageVia;
-                };
-                $setOnInsert: {
-                    _id: string;
                 };
             };
             upsert: true;
@@ -83,14 +81,12 @@ export async function archiveChatStream(
             updateOne: {
                 filter: { _id: msg.hash },
                 update: {
-                    $set: {
+                    $setOnInsert: {
+                        _id: msg.hash,
                         date: msg.date,
                         time: msg.time,
                         content: msg.content,
                         via,
-                    },
-                    $setOnInsert: {
-                        _id: msg.hash,
                     },
                 },
                 upsert: true,
