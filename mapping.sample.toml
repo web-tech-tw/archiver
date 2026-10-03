@@ -1,7 +1,9 @@
 # mapping.toml
 # 頻道 ID 與 MongoDB Collection 名稱對應設定
+# message_collection：聊天訊息歸檔的 Collection（必填）
+# knowledge_collection：知識文件（.md/.pdf → Nymph knowledge ingest）的 Collection；存在即啟用知識進料
 
 [mappings]
 # 範例：Discord 頻道 ID 對應至指定的 Collection
-"123456789012345678" = "discord_chat_archive"
-"987654321098765432" = "another_chat_archive"
+"123456789012345678" = { message_collection = "discord_chat_archive" }
+"987654321098765432" = { message_collection = "another_chat_archive", knowledge_collection = "another_knowledge_archive" }

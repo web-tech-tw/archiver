@@ -2,7 +2,8 @@ import { connectDatabase, disconnectDatabase } from "./src/databases/connection"
 import { getMessageModel } from "./src/databases/models/message";
 import { dryRunValidateStream, archiveChatStream } from "./src/databases/archiver";
 import { extractChatPreview } from "./src/utils/parser";
-import { getCollectionForRoom, loadMappingConfig } from "./src/config/mapping";
+import { getCollectionForRoom, getKnowledgeCollectionForRoom, isKnowledgeRoom, loadMappingConfig } from "./src/config/mapping";
+import { ingestKnowledgeFile } from "./src/utils/knowledge";
 import { DiscordProvider } from "./src/providers/discord";
 import type { ChatContext, MessageCard } from "./src/types/provider";
 
@@ -44,6 +45,45 @@ function buildStatusCard(params: {
         color,
         fields: [
             { name: "目標集合", value: `\`${params.collectionName}\``, inline: true },
+            { name: "交易 ID", value: `\`${params.transactionId}\``, inline: true },
+            { name: "處理狀態", value: statusText, inline: false },
+        ],
+        timestamp: new Date(),
+        footer: `Chat Archiver • ${params.transactionId}`,
+    };
+}
+
+function buildKnowledgeCard(params: {
+    transactionId: string;
+    fileName: string;
+    uploaderId?: string;
+    uploaderName?: string;
+    status: "processing" | "success" | "error";
+    deduped?: boolean;
+    knowledgeId?: string;
+    errorMessage?: string;
+}): MessageCard {
+    const uploaderText = params.uploaderId ? `<@${params.uploaderId}>` : (params.uploaderName || "未知使用者");
+
+    let color = 0x3498db; // 藍色（處理中）
+    let statusText = "⏳ 正在將文件送入 Nymph 知識庫...";
+
+    if (params.status === "success") {
+        color = 0x2ecc71; // 綠色（成功）
+        statusText = params.deduped
+            ? "✅ 此文件先前已入庫（內容雜湊相同），已跳過重複寫入。"
+            : `✅ 已寫入 Nymph 知識庫！knowledgeId：\`${params.knowledgeId || "N/A"}\``;
+    } else if (params.status === "error") {
+        color = 0xe74c3c; // 紅色（失敗）
+        statusText = `❌ 進料失敗：${params.errorMessage}`;
+    }
+
+    return {
+        title: "📚 知識文件進料",
+        description: `**檔案名稱**：\`${params.fileName}\`\n**上傳者**：${uploaderText}`,
+        color,
+        fields: [
+            { name: "目標服務", value: "`Nymph knowledge`", inline: true },
             { name: "交易 ID", value: `\`${params.transactionId}\``, inline: true },
             { name: "處理狀態", value: statusText, inline: false },
         ],
@@ -116,7 +156,65 @@ provider.onMessage(async (ctx: ChatContext) => {
         return;
     }
 
-    // 2. 一般文字訊息日誌
+    // 2. 知識文件（.md/.pdf）→ Nymph knowledge 進料
+    const knowledgeFileName = ctx.fileName?.toLowerCase() || "";
+    if (ctx.type === "file" && (knowledgeFileName.endsWith(".md") || knowledgeFileName.endsWith(".pdf"))) {
+        if (!(await isKnowledgeRoom(ctx.roomId))) {
+            console.info(`[Archiver] 知識文件 ${ctx.fileName} 來自未設定 knowledge_collection 的頻道 (${ctx.roomId})，略過。`);
+            return;
+        }
+
+        const knowledgeCollection = await getKnowledgeCollectionForRoom(ctx.roomId);
+
+        const knowledgeTransactionId = ctx.transactionId;
+        if (!knowledgeTransactionId) {
+            throw new Error("[Archiver] 訊息上下文缺少 transactionId");
+        }
+
+        const knowledgeCardParams = {
+            transactionId: knowledgeTransactionId,
+            fileName: ctx.fileName || "",
+            uploaderId: ctx.sender.id,
+            uploaderName: ctx.sender.nickname,
+        };
+
+        const knowledgeStatusMsg = await ctx.reply(buildKnowledgeCard({
+            ...knowledgeCardParams,
+            status: "processing",
+        }));
+
+        try {
+            const result = await ingestKnowledgeFile({
+                filePath: ctx.content,
+                fileName: ctx.fileName || "",
+                roomId: ctx.roomId,
+                uploaderId: ctx.sender.id,
+                transactionId: knowledgeTransactionId,
+                knowledgeCollection: knowledgeCollection || undefined,
+            });
+
+            if (!result.ok) {
+                throw new Error(result.error || `Nymph 回應 ${result.status}`);
+            }
+
+            await knowledgeStatusMsg.edit(buildKnowledgeCard({
+                ...knowledgeCardParams,
+                status: "success",
+                deduped: result.deduped,
+                knowledgeId: result.knowledgeId,
+            }));
+        } catch (error) {
+            console.error("[Archiver] 知識文件進料失敗:", error);
+            await knowledgeStatusMsg.edit(buildKnowledgeCard({
+                ...knowledgeCardParams,
+                status: "error",
+                errorMessage: (error as Error).message,
+            }));
+        }
+        return;
+    }
+
+    // 3. 一般文字訊息日誌
     console.info(`[Message] [${ctx.platformName}] Room: ${ctx.roomId}, User: ${ctx.sender.nickname || ctx.sender.id} (${ctx.type}): ${ctx.content}`);
 });
 
